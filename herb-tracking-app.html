@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Herb Tracking System</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 10px;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(45deg, #2ecc71, #27ae60);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 1.5em;
+            margin-bottom: 5px;
+        }
+
+        .nav-tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .nav-tab {
+            flex: 1;
+            padding: 15px 10px;
+            text-align: center;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+            color: #666;
+        }
+
+        .nav-tab.active {
+            background: white;
+            color: #2ecc71;
+            border-bottom: 2px solid #2ecc71;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 20px;
+            min-height: 400px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #2ecc71;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(45deg, #2ecc71, #27ae60);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .qr-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        #qrcode {
+            margin: 20px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .scanner-area {
+            text-align: center;
+            padding: 20px;
+            border: 2px dashed #2ecc71;
+            border-radius: 10px;
+            margin: 20px 0;
+            background: #f8fff8;
+        }
+
+        .history-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 4px solid #2ecc71;
+        }
+
+        .timestamp {
+            color: #666;
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .status.collected { background: #d4edda; color: #155724; }
+        .status.transport { background: #fff3cd; color: #856404; }
+        .status.processing { background: #cce7ff; color: #004085; }
+        .status.lab-tested { background: #e2e3e5; color: #383d41; }
+        .status.completed { background: #d1ecf1; color: #0c5460; }
+
+        .success-msg {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .herb-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .location-display {
+            background: #e3f2fd;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                margin: 5px;
+            }
+            
+            .nav-tab {
+                font-size: 10px;
+                padding: 12px 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌿 Herb Tracker</h1>
+            <p>Complete Supply Chain Management</p>
+        </div>
+
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="showTab('collector')">Collector</button>
+            <button class="nav-tab" onclick="showTab('transport')">Transport</button>
+            <button class="nav-tab" onclick="showTab('processing')">Processing</button>
+            <button class="nav-tab" onclick="showTab('lab')">Lab</button>
+            <button class="nav-tab" onclick="showTab('track')">Track</button>
+        </div>
+
+        <!-- Collector Tab -->
+        <div id="collector" class="tab-content active">
+            <h3>🌱 Herb Collection Form</h3>
+            <div class="form-group">
+                <label>Herb Name</label>
+                <select id="herbName">
+                    <option value="">Select Herb</option>
+                    <option value="Tulsi">Tulsi (Holy Basil)</option>
+                    <option value="Neem">Neem</option>
+                    <option value="Ashwagandha">Ashwagandha</option>
+                    <option value="Turmeric">Turmeric</option>
+                    <option value="Ginger">Ginger</option>
+                    <option value="Brahmi">Brahmi</option>
+                    <option value="Aloe Vera">Aloe Vera</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Collector Name</label>
+                <input type="text" id="collectorName" placeholder="Enter your name">
+            </div>
+            <div class="form-group">
+                <label>Collection Location</label>
+                <input type="text" id="collectionLocation" placeholder="Village/Area name">
+            </div>
+            <div class="form-group">
+                <label>Quantity (kg)</label>
+                <input type="number" id="quantity" placeholder="Enter quantity in kg">
+            </div>
+            <div class="form-group">
+                <label>Collection Date</label>
+                <input type="date" id="collectionDate">
+            </div>
+            <div class="form-group">
+                <label>Quality Notes</label>
+                <textarea id="qualityNotes" placeholder="Fresh, mature, no diseases..." rows="3"></textarea>
+            </div>
+            <button class="btn" onclick="submitCollectorForm()">Generate Collection QR</button>
+            
+            <div id="collectorResult" style="display: none;">
+                <div class="success-msg">
+                    Collection form submitted successfully!
+                </div>
+                <div class="qr-container">
+                    <div id="collectorQR"></div>
+                    <p><strong>Batch ID: <span id="batchId"></span></strong></p>
+                    <p>Share this QR with transport team</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Transport Tab -->
+        <div id="transport" class="tab-content">
+            <h3>🚛 Transport Management</h3>
+            <div class="scanner-area">
+                <h4>Scan Collection QR Code</h4>
+                <input type="text" id="transportQRInput" placeholder="Enter Batch ID or scan QR">
+                <button class="btn" onclick="scanCollectionQR()" style="margin-top: 10px;">Process Pickup</button>
+            </div>
+            
+            <div id="transportForm" style="display: none;">
+                <div class="herb-info">
+                    <h4>Herb Details</h4>
+                    <div id="herbDetails"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Driver Name</label>
+                    <input type="text" id="driverName" placeholder="Enter driver name">
+                </div>
+                <div class="form-group">
+                    <label>Vehicle Number</label>
+                    <input type="text" id="vehicleNumber" placeholder="Enter vehicle number">
+                </div>
+                <div class="form-group">
+                    <label>Pickup Time</label>
+                    <input type="datetime-local" id="pickupTime">
+                </div>
+                <button class="btn" onclick="submitTransportForm()">Confirm Pickup & Generate Location</button>
+                
+                <div id="transportResult" style="display: none;">
+                    <div class="success-msg">Transport information updated!</div>
+                    <div class="location-display">
+                        <strong>Current Location:</strong>
+                        <div id="currentLocation"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Processing Tab -->
+        <div id="processing" class="tab-content">
+            <h3>⚙️ Processing Unit</h3>
+            <div class="scanner-area">
+                <h4>Scan Transport QR</h4>
+                <input type="text" id="processingQRInput" placeholder="Enter Batch ID">
+                <button class="btn" onclick="scanTransportQR()" style="margin-top: 10px;">Start Processing</button>
+            </div>
+            
+            <div id="processingForm" style="display: none;">
+                <div class="herb-info">
+                    <div id="processingHerbDetails"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Processing Type</label>
+                    <select id="processingType">
+                        <option value="Cleaning">Cleaning & Sorting</option>
+                        <option value="Drying">Drying</option>
+                        <option value="Grinding">Grinding</option>
+                        <option value="Packaging">Packaging</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Processed Quantity (kg)</label>
+                    <input type="number" id="processedQuantity" placeholder="Final quantity after processing">
+                </div>
+                <div class="form-group">
+                    <label>Processing Date</label>
+                    <input type="date" id="processingDate">
+                </div>
+                <div class="form-group">
+                    <label>Operator Name</label>
+                    <input type="text" id="operatorName" placeholder="Processing operator name">
+                </div>
+                <div class="form-group">
+                    <label>Processing Notes</label>
+                    <textarea id="processingNotes" placeholder="Quality after processing, moisture content..." rows="3"></textarea>
+                </div>
+                <button class="btn" onclick="submitProcessingForm()">Complete Processing</button>
+                
+                <div id="processingResult" style="display: none;">
+                    <div class="success-msg">Processing completed successfully!</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lab Tab -->
+        <div id="lab" class="tab-content">
+            <h3>🔬 Laboratory Testing</h3>
+            <div class="scanner-area">
+                <h4>Scan Processing QR</h4>
+                <input type="text" id="labQRInput" placeholder="Enter Batch ID">
+                <button class="btn" onclick="scanProcessingQR()" style="margin-top: 10px;">Start Lab Analysis</button>
+            </div>
+            
+            <div id="labForm" style="display: none;">
+                <div class="herb-info">
+                    <div id="labHerbDetails"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Purity Level (%)</label>
+                    <input type="number" id="purityLevel" min="0" max="100" placeholder="85">
+                </div>
+                <div class="form-group">
+                    <label>Moisture Content (%)</label>
+                    <input type="number" id="moistureContent" min="0" max="100" placeholder="12">
+                </div>
+                <div class="form-group">
+                    <label>Active Compounds</label>
+                    <input type="text" id="activeCompounds" placeholder="List of active compounds found">
+                </div>
+                <div class="form-group">
+                    <label>Test Date</label>
+                    <input type="date" id="testDate">
+                </div>
+                <div class="form-group">
+                    <label>Lab Technician</label>
+                    <input type="text" id="labTechnician" placeholder="Technician name">
+                </div>
+                <div class="form-group">
+                    <label>Certification Status</label>
+                    <select id="certificationStatus">
+                        <option value="Certified">Certified - Passed All Tests</option>
+                        <option value="Conditional">Conditional - Minor Issues</option>
+                        <option value="Rejected">Rejected - Failed Quality Tests</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Lab Notes</label>
+                    <textarea id="labNotes" placeholder="Detailed test results and observations..." rows="3"></textarea>
+                </div>
+                <button class="btn" onclick="submitLabForm()">Generate Final QR Certificate</button>
+                
+                <div id="labResult" style="display: none;">
+                    <div class="success-msg">Lab testing completed! Final QR generated.</div>
+                    <div class="qr-container">
+                        <div id="finalQR"></div>
+                        <p><strong>Final Certificate QR</strong></p>
+                        <p>Scan this QR to view complete herb history</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tracking Tab -->
+        <div id="track" class="tab-content">
+            <h3>📱 Track Herb History</h3>
+            <div class="scanner-area">
+                <h4>Scan Any QR from the Process</h4>
+                <input type="text" id="trackingInput" placeholder="Enter Batch ID to track">
+                <button class="btn" onclick="trackHerb()" style="margin-top: 10px;">Show Complete History</button>
+            </div>
+            
+            <div id="trackingResult" style="display: none;">
+                <h4>🌿 Complete Herb Journey</h4>
+                <div id="herbJourney"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global data store
+        let herbData = {};
+
+        // Set today's date as default
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('collectionDate').value = today;
+            document.getElementById('processingDate').value = today;
+            document.getElementById('testDate').value = today;
+            
+            const now = new Date().toISOString().slice(0, 16);
+            document.getElementById('pickupTime').value = now;
+        });
+
+        function showTab(tabName) {
+            // Hide all tabs
+            const tabs = document.querySelectorAll('.tab-content');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            
+            const navTabs = document.querySelectorAll('.nav-tab');
+            navTabs.forEach(tab => tab.classList.remove('active'));
+            
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function generateBatchId() {
+            return 'HRB' + Date.now().toString().slice(-8) + Math.floor(Math.random() * 100);
+        }
+
+        function submitCollectorForm() {
+            const herbName = document.getElementById('herbName').value;
+            const collectorName = document.getElementById('collectorName').value;
+            const location = document.getElementById('collectionLocation').value;
+            const quantity = document.getElementById('quantity').value;
+            const date = document.getElementById('collectionDate').value;
+            const notes = document.getElementById('qualityNotes').value;
+
+            if (!herbName || !collectorName || !location || !quantity || !date) {
+                alert('Please fill all required fields');
+                return;
+            }
+
+            const batchId = generateBatchId();
+            
+            herbData[batchId] = {
+                batchId: batchId,
+                herbName: herbName,
+                collector: {
+                    name: collectorName,
+                    location: location,
+                    quantity: quantity,
+                    date: date,
+                    notes: notes,
+                    timestamp: new Date().toISOString()
+                },
+                status: 'collected'
+            };
+
+            // Generate QR Code
+            document.getElementById('collectorQR').innerHTML = '';
+            const qrCanvas = document.createElement('canvas');
+            const qr = new QRious({
+                element: qrCanvas,
+                value: batchId,
+                size: 200,
+                foreground: '#2ecc71',
+                background: '#ffffff'
+            });
+            document.getElementById('collectorQR').appendChild(qrCanvas);
+
+            document.getElementById('batchId').textContent = batchId;
+            document.getElementById('collectorResult').style.display = 'block';
+        }
+
+        function scanCollectionQR() {
+            const batchId = document.getElementById('transportQRInput').value;
+            
+            if (!herbData[batchId]) {
+                alert('Invalid Batch ID. Please check and try again.');
+                return;
+            }
+
+            const data = herbData[batchId];
+            document.getElementById('herbDetails').innerHTML = `
+                <div class="info-row"><span><strong>Herb:</strong></span><span>${data.herbName}</span></div>
+                <div class="info-row"><span><strong>Batch ID:</strong></span><span>${data.batchId}</span></div>
+                <div class="info-row"><span><strong>Collector:</strong></span><span>${data.collector.name}</span></div>
+                <div class="info-row"><span><strong>Location:</strong></span><span>${data.collector.location}</span></div>
+                <div class="info-row"><span><strong>Quantity:</strong></span><span>${data.collector.quantity} kg</span></div>
+            `;
+
+            document.getElementById('transportForm').style.display = 'block';
+        }
+
+        function submitTransportForm() {
+            const batchId = document.getElementById('transportQRInput').value;
+            const driverName = document.getElementById('driverName').value;
+            const vehicleNumber = document.getElementById('vehicleNumber').value;
+            const pickupTime = document.getElementById('pickupTime').value;
+
+            if (!driverName || !vehicleNumber || !pickupTime) {
+                alert('Please fill all transport details');
+                return;
+            }
+
+            // Generate random location
+            const locations = [
+                'Highway NH-48, Km 45, Maharashtra',
+                'Pune-Mumbai Express, Toll Plaza',
+                'Lonavala Processing Hub, Maharashtra',
+                'Nashik Distribution Center',
+                'Mumbai Port Area, Gateway',
+                'Aurangabad Industrial Zone'
+            ];
+            const randomLocation = locations[Math.floor(Math.random() * locations.length)];
+
+            herbData[batchId].transport = {
+                driver: driverName,
+                vehicle: vehicleNumber,
+                pickupTime: pickupTime,
+                currentLocation: randomLocation,
+                timestamp: new Date().toISOString()
+            };
+            herbData[batchId].status = 'transport';
+
+            document.getElementById('currentLocation').textContent = randomLocation;
+            document.getElementById('transportResult').style.display = 'block';
+        }
+
+        function scanTransportQR() {
+            const batchId = document.getElementById('processingQRInput').value;
+            
+            if (!herbData[batchId] || herbData[batchId].status !== 'transport') {
+                alert('Invalid Batch ID or batch not ready for processing.');
+                return;
+            }
+
+            const data = herbData[batchId];
+            document.getElementById('processingHerbDetails').innerHTML = `
+                <div class="info-row"><span><strong>Herb:</strong></span><span>${data.herbName}</span></div>
+                <div class="info-row"><span><strong>Batch ID:</strong></span><span>${data.batchId}</span></div>
+                <div class="info-row"><span><strong>Original Quantity:</strong></span><span>${data.collector.quantity} kg</span></div>
+                <div class="info-row"><span><strong>From:</strong></span><span>${data.collector.location}</span></div>
+            `;
+
+            document.getElementById('processingForm').style.display = 'block';
+        }
+
+        function submitProcessingForm() {
+            const batchId = document.getElementById('processingQRInput').value;
+            const processingType = document.getElementById('processingType').value;
+            const processedQuantity = document.getElementById('processedQuantity').value;
+            const processingDate = document.getElementById('processingDate').value;
+            const operatorName = document.getElementById('operatorName').value;
+            const processingNotes = document.getElementById('processingNotes').value;
+
+            if (!processedQuantity || !operatorName) {
+                alert('Please fill required processing details');
+                return;
+            }
+
+            herbData[batchId].processing = {
+                type: processingType,
+                quantity: processedQuantity,
+                date: processingDate,
+                operator: operatorName,
+                notes: processingNotes,
+                timestamp: new Date().toISOString()
+            };
+            herbData[batchId].status = 'processing';
+
+            document.getElementById('processingResult').style.display = 'block';
+        }
+
+        function scanProcessingQR() {
+            const batchId = document.getElementById('labQRInput').value;
+            
+            if (!herbData[batchId] || herbData[batchId].status !== 'processing') {
+                alert('Invalid Batch ID or batch not ready for lab testing.');
+                return;
+            }
+
+            const data = herbData[batchId];
+            document.getElementById('labHerbDetails').innerHTML = `
+                <div class="info-row"><span><strong>Herb:</strong></span><span>${data.herbName}</span></div>
+                <div class="info-row"><span><strong>Batch ID:</strong></span><span>${data.batchId}</span></div>
+                <div class="info-row"><span><strong>Processed Quantity:</strong></span><span>${data.processing.quantity} kg</span></div>
+                <div class="info-row"><span><strong>Processing Type:</strong></span><span>${data.processing.type}</span></div>
+            `;
+
+            document.getElementById('labForm').style.display = 'block';
+        }
+
+        function submitLabForm() {
+            const batchId = document.getElementById('labQRInput').value;
+            const purityLevel = document.getElementById('purityLevel').value;
+            const moistureContent = document.getElementById('moistureContent').value;
+            const activeCompounds = document.getElementById('activeCompounds').value;
+            const testDate = document.getElementById('testDate').value;
+            const labTechnician = document.getElementById('labTechnician').value;
+            const certificationStatus = document.getElementById('certificationStatus').value;
+            const labNotes = document.getElementById('labNotes').value;
+
+            if (!purityLevel || !moistureContent || !labTechnician) {
+                alert('Please fill required lab details');
+                return;
+            }
+
+            herbData[batchId].lab = {
+                purity: purityLevel,
+                moisture: moistureContent,
+                compounds: activeCompounds,
+                testDate: testDate,
+                technician: labTechnician,
+                status: certificationStatus,
+                notes: labNotes,
+                timestamp: new Date().toISOString()
+            };
+            herbData[batchId].status = 'completed';
+
+            // Generate final QR
+            document.getElementById('finalQR').innerHTML = '';
+            const finalQrCanvas = document.createElement('canvas');
+            const finalQr = new QRious({
+                element: finalQrCanvas,
+                value: batchId,
+                size: 200,
+                foreground: '#2ecc71',
+                background: '#ffffff'
+            });
+            document.getElementById('finalQR').appendChild(finalQrCanvas);
+
+            document.getElementById('labResult').style.display = 'block';
+        }
+
+        function trackHerb() {
+            const batchId = document.getElementById('trackingInput').value;
+            
+            if (!herbData[batchId]) {
+                alert('Invalid Batch ID. No data found.');
+                return;
+            }
+
+            const data = herbData[batchId];
+            let historyHTML = `
+                <div class="herb-info">
+                    <h4>🌿 ${data.herbName} - ${data.batchId}</h4>
+                    <div class="status ${data.status}">${data.status.replace('-', ' ')}</div>
+                </div>
+            `;
+
+            // Collection Stage
+            if (data.collector) {
+                historyHTML += `
+                    <div class="history-item">
+                        <div class="timestamp">${new Date(data.collector.timestamp).toLocaleString()}</div>
+                        <h5>🌱 Collection Stage</h5>
+                        <p><strong>Collector:</strong> ${data.collector.name}</p>
+                        <p><strong>Location:</strong> ${data.collector.location}</p>
+                        <p><strong>Quantity:</strong> ${data.collector.quantity} kg</p>
+                        <p><strong>Date:</strong> ${data.collector.date}</p>
+                        <p><strong>Notes:</strong> ${data.collector.notes}</p>
+                    </div>
+                `;
+            }
+
+            // Transport Stage
+            if (data.transport) {
+                historyHTML += `
+                    <div class="history-item">
+                        <div class="timestamp">${new Date(data.transport.timestamp).toLocaleString()}</div>
+                        <h5>🚛 Transport Stage</h5>
+                        <p><strong>Driver:</strong> ${data.transport.driver}</p>
+                        <p><strong>Vehicle:</strong> ${data.transport.vehicle}</p>
+                        <p><strong>Pickup:</strong> ${new Date(data.transport.pickupTime).toLocaleString()}</p>
+                        <p><strong>Location:</strong> ${data.transport.currentLocation}</p>
+                    </div>
+                `;
+            }
+
+            // Processing Stage
+            if (data.processing) {
+                historyHTML += `
+                    <div class="history-item">
+                        <div class="timestamp">${new Date(data.processing.timestamp).toLocaleString()}</div>
+                        <h5>⚙️ Processing Stage</h5>
+                        <p><strong>Type:</strong> ${data.processing.type}</p>
+                        <p><strong>Operator:</strong> ${data.processing.operator}</p>
+                        <p><strong>Final Quantity:</strong> ${data.processing.quantity} kg</p>
+                        <p><strong>Date:</strong> ${data.processing.date}</p>
+                        <p><strong>Notes:</strong> ${data.processing.notes}</p>
+                    </div>
+                `;
+            }
+
+            // Lab Stage
+            if (data.lab) {
+                historyHTML += `
+                    <div class="history-item">
+                        <div class="timestamp">${new Date(data.lab.timestamp).toLocaleString()}</div>
+                        <h5>🔬 Laboratory Testing</h5>
+                        <p><strong>Purity:</strong> ${data.lab.purity}%</p>
+                        <p><strong>Moisture:</strong> ${data.lab.moisture}%</p>
+                        <p><strong>Compounds:</strong> ${data.lab.compounds}</p>
+                        <p><strong>Technician:</strong> ${data.lab.technician}</p>
+                        <p><strong>Status:</strong> <span class="status ${data.lab.status.toLowerCase()}">${data.lab.status}</span></p>
+                        <p><strong>Notes:</strong> ${data.lab.notes}</p>
+                    </div>
+                `;
+            }
+
+            document.getElementById('herbJourney').innerHTML = historyHTML;
+            document.getElementById('trackingResult').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
